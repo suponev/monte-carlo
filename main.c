@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     MPI_Init(NULL, NULL);
     double starttime, endtime;
     starttime = MPI_Wtime();
-    float atoms[DIM1 * DIM2];
+    double atoms[DIM1 * DIM2];
     int size, rank;
 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -26,15 +26,15 @@ int main(int argc, char **argv)
         file = fopen("input", "r");
         for (int i = 0; i < DIM1 * DIM2; i++)
         {
-            fscanf(file, "%f", &atoms[i]);
+            fscanf(file, "%lf", &atoms[i]);
             printf("%lf\n", atoms[i]);
         }
     }
 
-    MPI_Bcast(&atoms[0], DIM1 * DIM2, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&atoms[0], DIM1 * DIM2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    float h = 0.01;
-    float X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX, R;
+    double h = 0.002;
+    double X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX, R;
     R = atoms[0];
     X_MIN = atoms[1] - R;
     X_MAX = atoms[1] + R;
@@ -61,12 +61,14 @@ int main(int argc, char **argv)
         printf("Y_MIN = %lf Y_MAX = %lf\n", Z_MIN, Z_MAX);
     }
 
-    int n = 0;
-    int X_ITER_COUNT = (int)((X_MAX - X_MIN) / h);
-    int INTERVAL = X_ITER_COUNT / size;
-    int right_edge = rank + 1 == size
+    long n = 0;
+    long X_ITER_COUNT = (int)((X_MAX - X_MIN) / h);
+    long INTERVAL = X_ITER_COUNT / size;
+    long right_edge = rank + 1 == size
                          ? (rank + 1) * INTERVAL + X_ITER_COUNT % size + 1
                          : (rank + 1) * INTERVAL;
+    // printf("Right edge =  %d\n", right_edge);
+
     float x, y, z;
     for (int i = rank * INTERVAL; i < right_edge; i++)
     {
@@ -77,7 +79,6 @@ int main(int argc, char **argv)
             for (int k = 0; k < (Z_MAX - Z_MIN) / h; k++)
             {
                 z = Z_MIN + k * h;
-                // Определение попадания
                 for (int i = 0; i < DIM1 * DIM2; i = i + DIM2)
                 {
                     if ((x - atoms[i + 1]) * (x - atoms[i + 1]) +
@@ -99,8 +100,8 @@ int main(int argc, char **argv)
     }
     else
     {
-        int resunlt_n = n;
-        int buf;
+        long resunlt_n = n;
+        long buf;
         MPI_Status status;
 
         for (int r = 1; r < size; r++)
@@ -111,12 +112,12 @@ int main(int argc, char **argv)
         float V_CUBE = (X_MAX - X_MIN) * (Y_MAX - Y_MIN) * (Z_MAX - Z_MIN);
         float ALL_ITER = V_CUBE / h / h / h;
         endtime = MPI_Wtime();
+
         printf("All iter =  %f\n", ALL_ITER);
         printf("V cube = %f\n", V_CUBE);
         printf("All hit = %d\n", resunlt_n);
         printf("V (m^(-30)) = %f\n", resunlt_n / ALL_ITER * V_CUBE);
-
-        printf("That took %f seconds\n", endtime - starttime);
+        printf("time %f (s)\n", endtime - starttime);
     }
     MPI_Finalize();
 }
